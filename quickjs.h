@@ -313,17 +313,17 @@ typedef JSValue JSCFunctionMagic(JSContext *ctx, JSValueConst this_val, int argc
 typedef JSValue JSCFunctionData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValue *func_data);
 
 typedef struct JSMallocState {
-    size_t malloc_count;
-    size_t malloc_size;
+    size_t malloc_count;     // 用来记录分配内存数据， 调用malloc+1， free-1.
+    size_t malloc_size;      // 实际分配内存的大小。
     size_t malloc_limit;
     void *opaque; /* user opaque */
 } JSMallocState;
 
 typedef struct JSMallocFunctions {
-    void *(*js_malloc)(JSMallocState *s, size_t size);
-    void (*js_free)(JSMallocState *s, void *ptr);
-    void *(*js_realloc)(JSMallocState *s, void *ptr, size_t size);
-    size_t (*js_malloc_usable_size)(const void *ptr);
+    void *(*js_malloc)(JSMallocState *s, size_t size);                  // malloc
+    void (*js_free)(JSMallocState *s, void *ptr);                       // free
+    void *(*js_realloc)(JSMallocState *s, void *ptr, size_t size);      // realloc
+    size_t (*js_malloc_usable_size)(const void *ptr);                   // 获取传入指针对应的内存大小。
 } JSMallocFunctions;
 
 typedef struct JSGCObjectHeader JSGCObjectHeader;

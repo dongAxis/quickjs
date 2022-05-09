@@ -98,8 +98,8 @@
 /* dump objects leaking when freeing the runtime */
 //#define DUMP_LEAKS  1
 /* dump memory usage before running the garbage collector */
-//#define DUMP_MEM
-//#define DUMP_OBJECTS    /* dump objects in JS_FreeContext */
+#define DUMP_MEM
+#define DUMP_OBJECTS    /* dump objects in JS_FreeContext */
 //#define DUMP_ATOMS      /* dump atoms in JS_FreeContext */
 //#define DUMP_SHAPES     /* dump shapes in JS_FreeContext */
 //#define DUMP_MODULE_RESOLVE
@@ -1745,7 +1745,7 @@ static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
     s->malloc_size += js_def_malloc_usable_size(ptr) - old_size;
     return ptr;
 }
-
+// 定义了jsc内存管理。
 static const JSMallocFunctions def_malloc_funcs = {
     js_def_malloc,
     js_def_free,
