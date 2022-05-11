@@ -243,12 +243,15 @@ struct JSRuntime {
     JSMallocState malloc_state;
     const char *rt_info;
 
+  // 和字符串常量数组相关的runtime信息。
     int atom_hash_size; /* power of two */
-    int atom_count;
-    int atom_size;
+
+  int atom_count;  // atom_array中字符串的个数
+  int atom_size;   // atom_array的长度
     int atom_count_resize; /* resize hash table at this count */
     uint32_t *atom_hash;
-    JSAtomStruct **atom_array;
+  JSAtomStruct **atom_array;      // 字符串数据（字符串常量数组）
+  // 当前atom_array中的空位， 可用来存放jsstring。
     int atom_free_index; /* 0 = none */
 
     int class_count;    /* size of class_array */
@@ -487,20 +490,20 @@ typedef enum {
 
 struct JSString {
     JSRefCountHeader header; /* must come first, 32-bit */
-    uint32_t len : 31;
-    uint8_t is_wide_char : 1; /* 0 = 8 bits, 1 = 16 bits characters */
+    uint32_t len : 31;         /// 字符串当前的程度.
+    uint8_t is_wide_char : 1; /* 0 = 8 bits, 1 = 16 bits characters */  // 0-ascii; 1-unicode
     /* for JS_ATOM_TYPE_SYMBOL: hash = 0, atom_type = 3,
        for JS_ATOM_TYPE_PRIVATE: hash = 1, atom_type = 3
        XXX: could change encoding to have one more bit in hash */
-    uint32_t hash : 30;
+    uint32_t hash : 30;   // 哈希值
     uint8_t atom_type : 2; /* != 0 if atom, JS_ATOM_TYPE_x */
     uint32_t hash_next; /* atom_index for JS_ATOM_TYPE_SYMBOL */
 #ifdef DUMP_LEAKS
     struct list_head link; /* string list */
 #endif
     union {
-        uint8_t str8[0]; /* 8 bit strings will get an extra null terminator */
-        uint16_t str16[0];
+      uint8_t str8[0]; /* 8 bit strings will get an extra null terminator */   // 存储ascii字符串.
+      uint16_t str16[0];  //// 存储unicode字符串
     } u;
 };
 
@@ -1728,7 +1731,7 @@ static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
             return NULL;
         return js_def_malloc(s, size);
     }
-    old_size = js_def_malloc_usable_size(ptr);
+    old_size = js_def_malloc_usable_size(ptr);    // 根据传入的指针获取对应的大小。
     if (size == 0) {
         s->malloc_count--;
         s->malloc_size -= old_size + MALLOC_OVERHEAD;
@@ -1872,7 +1875,7 @@ static inline JSAtomStruct *atom_set_free(uint32_t v)
 {
     return (JSAtomStruct *)(((uintptr_t)v << 1) | 1);
 }
-
+// 创建并初始化jsstring相关结构体
 /* Note: the string contents are uninitialized */
 static JSString *js_alloc_string_rt(JSRuntime *rt, int max_len, int is_wide_char)
 {
@@ -2581,7 +2584,7 @@ static int JS_ResizeAtomHash(JSRuntime *rt, int new_hash_size)
     //    JS_DumpAtoms(rt);
     return 0;
 }
-
+// 将quickjs-atom.h中预定义的字符串放置到atom_array中，这些字符串在程序运行时候属于常驻内存。
 static int JS_InitAtoms(JSRuntime *rt)
 {
     int i, len, atom_type;
@@ -2693,12 +2696,12 @@ static JSAtom __JS_NewAtom(JSRuntime *rt, JSString *str, int atom_type)
     JSAtomStruct *p;
     int len;
 
-#if 0
+#if 1
     printf("__JS_NewAtom: ");  JS_DumpString(rt, str); printf("\n");
 #endif
-    if (atom_type < JS_ATOM_TYPE_SYMBOL) {
+    if (atom_type < JS_ATOM_TYPE_SYMBOL) {    /* JS_ATOM_TYPE_STRING && JS_ATOM_TYPE_GLOBAL_SYMBOL */
         /* str is not NULL */
-        if (str->atom_type == atom_type) {
+        if (str->atom_type == atom_type) {     // 如果str不是null， 那么会触发这个条件。
             /* str is the atom, return its index */
             i = js_get_atom_index(rt, str);
             /* reduce string refcount and increase atom's unless constant */
@@ -2710,7 +2713,7 @@ static JSAtom __JS_NewAtom(JSRuntime *rt, JSString *str, int atom_type)
         len = str->len;
         h = hash_string(str, atom_type);
         h &= JS_ATOM_HASH_MASK;
-        h1 = h & (rt->atom_hash_size - 1);
+        h1 = h & (rt->atom_hash_size - 1);     // 取余， 将hash值锁在一定范围之内。
         i = rt->atom_hash[h1];
         while (i != 0) {
             p = rt->atom_array[i];
